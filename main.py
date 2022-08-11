@@ -1,9 +1,7 @@
-# imports
 import random
 import time
 import numpy as np
 import math
-
 
 total_time = time.time()  # starts a timer
 
@@ -104,9 +102,9 @@ def cost(expected, actual):
             total += ((actual[i] - 0) ** 2)
 
     if expected.index(max(expected)) == actual.index(max(actual)):
-        return total, True
+        return total
     else:
-        return total, False
+        return total
 
 
 def foward_propagate(set):
@@ -121,32 +119,74 @@ def foward_propagate(set):
     output = [set[-1][x].value for x in range(len(set[-1]))]
 
 
+def get_output(set):
+    values = []
+    for node in set[-1]:
+        values.append(node.value)
+
+    return values
 
 
 sample_size = 50  # number of tests for each iteration
-NN_layout = [2, 4, 1]  # first number is the size of the input layer, last number is the size of the output layer, all other values are the size of hidden layers
+NN_layout = [2, 5,
+             1]  # first number is the size of the input layer, last number is the size of the output layer, all other values are the size of hidden layers
 NN_length = len(NN_layout)
 
-
 truth_table = {
-    '0, 1':True,
-    '1, 0':True,
-    '1, 1':False,
-    '0, 0':False,
+    '0,1': "1",
+    '1,0': "1",
+    '1,1': "0",
+    '0,0': "0",
 }
-iterations = 1
+iterations = 10
+sample_size = 5
+generations = 3
+generationCost = []
+fcost = 1
 
 for i in range(iterations):
-    given_inputs = random.choice(list(truth_table.keys()))
-    given_inputs = given_inputs.split(",")
-    given_inputs = [int(x) for x in given_inputs]
 
-    print(given_inputs)
+    if i != 0:
+        print(generationCost)
+        adjust_modifiers(NN, sum(generationCost)/len(generationCost))
+        generationCost = []
+    for k in range(sample_size):
 
-    init(given_inputs)
-    adjust_modifiers(NN, 1)
+        given_inputs = random.choice(list(truth_table.keys()))
+        given_inputs = given_inputs.split(",")
+        given_inputs = [int(x) for x in given_inputs]
 
-    foward_propagate(NN)
+        if i == 0:
+            init(given_inputs)
+            adjust_modifiers(NN, 1)
 
-display_NN()
-print("code took: ", time.time() - total_time, "seconds to run")
+        if i != 0:
+            for node in NN[0]:
+                node.value = 0
+            for node in NN[1]:
+                node.value = 0
+            print(len(NN))
+
+
+        foward_propagate(NN)
+
+
+        output = get_output(NN)
+        inputstr = ",".join(str(e) for e in given_inputs)
+        correct = truth_table.get(str(inputstr))
+
+
+        if correct == "1":
+            fcost = round(int(correct) - output[0], 4)
+        elif correct == "0":
+            fcost = round((output[0] - int(correct)), 4)
+
+        generationCost.append(fcost)
+
+
+
+
+
+
+
+print("code took: ", time.time() - total_time, "seconds to run") 
