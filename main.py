@@ -2,6 +2,7 @@ import random
 import time
 import numpy as np
 import math
+import copy
 
 total_time = time.time()  # starts a timer
 
@@ -226,10 +227,10 @@ def show_result(set):
     file_object.write('\n')
 
 
-NN_layout = [2, 15, 5,
+NN_layout = [3, 10,
              1]  # first number is the size of the input layer, last number is the size of the output layer, all other values are the size of hidden layers
 NN_length = len(NN_layout)
-'''
+
 truth_table = {
     '0,1,0': "1",
     '3,1,0': "1",
@@ -277,56 +278,67 @@ truth_table = {
     '1,-2': "0",
     '-1,4': "0",
 }
+'''
 
 
-
-sample_size = 250
-generations = 10000000
+sample_size = 50
+generations = 1000
+iterations = 100
 learning_rate = 1000
 generationCost = []
 fcost = 1
+best_cost = 5
 
-for i in range(generations):
+for x in range(iterations):
 
-    if i != 0:
-        averageCost = sum(generationCost) / len(generationCost)
-        adjust_modifiers(NN, learning_rate * averageCost)
-        print(averageCost)
-        if averageCost < 0.05:
-            print(averageCost)
-            print("code took: ", time.time() - total_time, "seconds to run")
-            if averageCost < 0.01:
-                append_to_file(NN)
-                exit()
-            show_result(NN)
-
+    print("iteration complete")
+    for y in range(generations):
         generationCost = []
+        if y == 0 and x == 0:
+            given_inputs = random.choice(list(truth_table.keys()))
+            given_inputs = given_inputs.split(",")
+            given_inputs = [int(x) for x in given_inputs]
 
-    for k in range(sample_size):
-
-        given_inputs = random.choice(list(truth_table.keys()))
-        given_inputs = given_inputs.split(",")
-        given_inputs = [int(x) for x in given_inputs]
-
-        if k == 0 and i == 0:
             init(given_inputs)
             adjust_modifiers(NN, 1)
 
-        if k != 0:
-            for a, l in enumerate(NN[0]):
-                l.value = given_inputs[a]
 
-        foward_propagate(NN)
-        output = get_output(NN)
+        currentGenNN = copy.deepcopy(NN)
+        adjust_modifiers(currentGenNN, best_cost*learning_rate)
 
-        inputstr = ",".join(str(e) for e in given_inputs)
-        correct = truth_table.get(str(inputstr))
+        for k in range(sample_size):
 
-        if correct == "1":
-            fcost = round(int(correct) - output[0], 4)
-        elif correct == "0":
-            fcost = round((output[0] - int(correct)), 4)
+            given_inputs = random.choice(list(truth_table.keys()))
+            given_inputs = given_inputs.split(",")
+            given_inputs = [int(x) for x in given_inputs]
 
-        generationCost.append(fcost)
+            if k != 0:
+                for a, l in enumerate(currentGenNN[0]):
+                    l.value = given_inputs[a]
+
+            foward_propagate(currentGenNN)
+            output = get_output(currentGenNN)
+
+            inputstr = ",".join(str(e) for e in given_inputs)
+            correct = truth_table.get(str(inputstr))
+
+            if correct == "1":
+                fcost = round(int(correct) - output[0], 4)
+            elif correct == "0":
+                fcost = round((output[0] - int(correct)), 4)
+
+            generationCost.append(fcost)
+        averageCost = sum(generationCost)/len(generationCost)
+
+        if averageCost < best_cost:
+            BestNN = copy.deepcopy(currentGenNN)
+            best_cost = averageCost
+
+
+    NN = copy.deepcopy(currentGenNN)
+    print(best_cost)
+    best_cost = 10
+
+
 
 print("code took: ", time.time() - total_time, "seconds to run") 
