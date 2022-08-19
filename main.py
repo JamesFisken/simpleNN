@@ -126,55 +126,201 @@ def get_output(set):
 
     return values
 
+def append_to_file(set):
+    file_object = open('Ai.txt', 'a')
+    file_object.write('---Inputlayer---')
+    file_object.write('\n')
 
-sample_size = 50  # number of tests for each iteration
-NN_layout = [2, 5,
+    file_object.write("values")
+    file_object.write('\n')
+    file_object.write(str([node.value for node in set[0]]))
+    file_object.write('\n')
+
+    file_object.write('Weights')
+    file_object.write('\n')
+    for i, node in enumerate(set[0]):
+        file_object.write(str(i))
+        file_object.write(' : ')
+        file_object.write(str(node.weights))
+        file_object.write('\n')
+
+
+
+    for n in range(NN_length-2):
+        file_object.write('\n')
+        file_object.write('\n')
+        file_object.write('--Hiddenlayer--: ')
+        file_object.write(str(n+1))
+        file_object.write('\n')
+
+        file_object.write('Values')
+        for i, node in enumerate(set[n + 1]):
+            file_object.write(str(i))
+            file_object.write(' : ')
+            file_object.write(str(node.value))
+            file_object.write('\n')
+
+        file_object.write('Weights')
+        for i, node in enumerate(set[n+1]):
+            file_object.write(str(i))
+            file_object.write(' : ')
+            file_object.write(str(node.weights))
+            file_object.write('\n')
+
+        file_object.write('\n')
+        file_object.write('Bias')
+        file_object.write('\n')
+
+        for i, node in enumerate(set[n+1]):
+            file_object.write(str(i))
+            file_object.write(' : ')
+            file_object.write(str(node.bias))
+            file_object.write('\n')
+
+    file_object.write('\n')
+    file_object.write('\n')
+    file_object.write('\n')
+    file_object.write('---OutputLayer---')
+
+    file_object.write('\n')
+    file_object.write('\n')
+
+    file_object.write('Values')
+    file_object.write('\n')
+    for i, node in enumerate(set[-1]):
+        file_object.write(str(i))
+        file_object.write(' : ')
+        file_object.write(str(node.value))
+        file_object.write('\n')
+
+    file_object.write('Bias')
+    for i, node in enumerate(set[-1]):
+        file_object.write(str(i))
+        file_object.write(' : ')
+        file_object.write(str(node.bias))
+        file_object.write('\n')
+
+    file_object.close()
+
+def show_result(set):
+    file_object = open('Ai.txt', 'a')
+    file_object.write('---Inputlayer---')
+    file_object.write('\n')
+
+    file_object.write("values")
+    file_object.write('\n')
+    file_object.write(str([node.value for node in set[0]]))
+    file_object.write('\n')
+    file_object.write('\n')
+
+    file_object.write('Output')
+    file_object.write('\n')
+    for i, node in enumerate(set[-1]):
+        file_object.write(str(i))
+        file_object.write(' : ')
+        file_object.write(str(node.value))
+        file_object.write('\n')
+    file_object.write('\n')
+    file_object.write('\n')
+    file_object.write('\n')
+    file_object.write('\n')
+
+
+NN_layout = [2, 15, 5,
              1]  # first number is the size of the input layer, last number is the size of the output layer, all other values are the size of hidden layers
 NN_length = len(NN_layout)
-
+'''
 truth_table = {
-    '0,1': "1",
-    '1,0': "1",
-    '1,1': "0",
-    '0,0': "0",
+    '0,1,0': "1",
+    '3,1,0': "1",
+    '1,1,2': "1",
+    '0,3,0': "1",
+    '0,1,1': "1",
+    '3,2,2': "1",
+    '1,2,2': "1",
+
+    '0,2,0': "0",
+    '2,2,0': "0",
+    '0,0,2': "0",
+    '2,2,2': "0",
+    '2,0,0': "0",
+    '0,2,2': "0",
+    '0,0,0': "0"
 }
-iterations = 10
-sample_size = 5
-generations = 3
+
+
+'''
+truth_table = {
+    '1,0': "1",
+    '5,2': "1",
+    '4,2': "1",
+    '1,1': "1",
+    '4,0': "1",
+    '3,2': "1",
+    '4,1': "1",
+    '2,1': "1",
+    '3,0': "1",
+    '5,4': "1",
+    '1,2': "1",
+    '1,4': "1",
+
+    '-1,0': "0",
+    '5,-2': "0",
+    '-4,2': "0",
+    '-1,1': "0",
+    '-4,0': "0",
+    '3,-2': "0",
+    '-4,1': "0",
+    '2,-1': "0",
+    '-3,0': "0",
+    '-5,4': "0",
+    '1,-2': "0",
+    '-1,4': "0",
+}
+
+
+
+sample_size = 250
+generations = 10000000
+learning_rate = 1000
 generationCost = []
 fcost = 1
 
-for i in range(iterations):
+for i in range(generations):
 
     if i != 0:
-        print(generationCost)
-        adjust_modifiers(NN, sum(generationCost)/len(generationCost))
+        averageCost = sum(generationCost) / len(generationCost)
+        adjust_modifiers(NN, learning_rate * averageCost)
+        print(averageCost)
+        if averageCost < 0.05:
+            print(averageCost)
+            print("code took: ", time.time() - total_time, "seconds to run")
+            if averageCost < 0.01:
+                append_to_file(NN)
+                exit()
+            show_result(NN)
+
         generationCost = []
+
     for k in range(sample_size):
 
         given_inputs = random.choice(list(truth_table.keys()))
         given_inputs = given_inputs.split(",")
         given_inputs = [int(x) for x in given_inputs]
 
-        if i == 0:
+        if k == 0 and i == 0:
             init(given_inputs)
             adjust_modifiers(NN, 1)
 
-        if i != 0:
-            for node in NN[0]:
-                node.value = 0
-            for node in NN[1]:
-                node.value = 0
-            print(len(NN))
-
+        if k != 0:
+            for a, l in enumerate(NN[0]):
+                l.value = given_inputs[a]
 
         foward_propagate(NN)
-
-
         output = get_output(NN)
+
         inputstr = ",".join(str(e) for e in given_inputs)
         correct = truth_table.get(str(inputstr))
-
 
         if correct == "1":
             fcost = round(int(correct) - output[0], 4)
@@ -182,11 +328,5 @@ for i in range(iterations):
             fcost = round((output[0] - int(correct)), 4)
 
         generationCost.append(fcost)
-
-
-
-
-
-
 
 print("code took: ", time.time() - total_time, "seconds to run") 
