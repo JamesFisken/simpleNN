@@ -1,15 +1,15 @@
+
 import random
 import time
 import numpy as np
 import math
 import copy
 import matplotlib.pyplot as plt
-from multiprocessing import Pool
+import concurrent.futures
 import sys
 import time
 
 import keyboard
-
 def exit_program():
     if keyboard.is_pressed("q"):
         return True
@@ -17,7 +17,7 @@ def exit_program():
         return False
 
 
-total_time = time.time()  # starts a timer
+start_time = time.time()  # starts a timer
 
 
 class i_node:  # input node
@@ -46,7 +46,7 @@ class neuralnetwork:
 
     def calc(self, input):
         input = input.split(",")
-        input = [int(x) for x in input] #convert the input into a more us
+        input = [int(x) for x in input] #convert the input into a more usable form
 
         for a, l in enumerate(self.network[0]):
             l.value = input[a]
@@ -55,6 +55,10 @@ class neuralnetwork:
         output = get_output(self.network)
 
         return output
+
+
+
+
 
 
 NN = []  # this list will store the
@@ -230,31 +234,35 @@ def append_to_file(set):
 
     file_object.close()
 
-def show_result(set):
-    file_object = open('Ai.txt', 'a')
-    file_object.write('---Inputlayer---')
-    file_object.write('\n')
 
-    file_object.write("values")
-    file_object.write('\n')
-    file_object.write(str([node.value for node in set[0]]))
-    file_object.write('\n')
-    file_object.write('\n')
-
-    file_object.write('Output')
-    file_object.write('\n')
-    for i, node in enumerate(set[-1]):
-        file_object.write(str(i))
-        file_object.write(' : ')
-        file_object.write(str(node.value))
-        file_object.write('\n')
-    file_object.write('\n')
-    file_object.write('\n')
-    file_object.write('\n')
-    file_object.write('\n')
+def flatten(list):
+    return [j for sub in list for j in sub]
 
 
-NN_layout = [2, 5, 6,
+def run_instance_of_sample(repeats, currentGenNN):
+    fcost = []
+    for k in range(repeats):
+
+        given_inputs = random.choice(list(truth_table.keys()))
+        given_inputs = given_inputs.split(",")
+        given_inputs = [int(x) for x in given_inputs]
+
+        if k != 0:
+            for a, l in enumerate(currentGenNN[0]):
+                l.value = given_inputs[a]
+
+        foward_propagate(currentGenNN)
+        output = get_output(currentGenNN)
+
+        inputstr = ",".join(str(e) for e in given_inputs)
+        correct = truth_table.get(str(inputstr))
+
+        sampleCost = cost(correct, output)
+        fcost.append(sampleCost)
+    return fcost
+
+NN_layout = [2,
+             4, 5, 6,
              7]  # first number is the size of the input layer, last number is the size of the output layer, all other values are the size of hidden layers
 NN_length = len(NN_layout)
 
@@ -361,81 +369,92 @@ truth_table = {
     '9,9': '1,1,0,0,0,1,1'
 }
 
-sample_size = 200
+sample_size = 50
 generations = 100
 iterations = 1000
-learning_rate = 100
+learning_rate = 1
+processes = 6
 
 generationCost = []
 fcost = 100
 best_cost = 5
 costhistory = []
-
+multiprocessing = False
 tests = 1
+times = []
 
-for p in range(tests):
-    print("new set")
-    for x in range(generations):
-        for y in range(iterations):
-            if exit_program(): #user skips further generations, this may need multithreading
-                sys.exit()
-            generationCost = []
-            if y == 0 and x == 0:
-                given_inputs = random.choice(list(truth_table.keys()))
-                given_inputs = given_inputs.split(",")
-                given_inputs = [int(x) for x in given_inputs]
-                init(given_inputs)
-                adjust_modifiers(NN, 1)
+if __name__ == '__main__':
+    for p in range(tests):
+        for x in range(generations):
+            for y in range(iterations):
+                if exit_program(): #user skips further generations, this may need multithreading
+                    sys.exit()
+                generationCost = []
 
 
-            currentGenNN = copy.deepcopy(NN)
-            adjust_modifiers(currentGenNN, best_cost*learning_rate)
-
-            for k in range(sample_size):
-
-                given_inputs = random.choice(list(truth_table.keys()))
-                given_inputs = given_inputs.split(",")
-                given_inputs = [int(x) for x in given_inputs]
-
-                if k != 0:
-                    for a, l in enumerate(currentGenNN[0]):
-                        l.value = given_inputs[a]
-
-                foward_propagate(currentGenNN)
-                output = get_output(currentGenNN)
-
-                inputstr = ",".join(str(e) for e in given_inputs)
-                correct = truth_table.get(str(inputstr))
-
-                fcost = cost(correct, output)
-
-                
-                generationCost.append(fcost)
-            averageCost = sum(generationCost)/len(generationCost)
-
-            if averageCost < best_cost or y == 0:
-                BestNN = copy.deepcopy(currentGenNN)
-                best_cost = averageCost
+                if y == 0 and x == 0:
+                    given_inputs = random.choice(list(truth_table.keys()))
+                    given_inputs = given_inputs.split(",")
+                    given_inputs = [int(x) for x in given_inputs]
+                    init(given_inputs)
+                    adjust_modifiers(NN, 1)
 
 
-        NN = copy.deepcopy(BestNN)
-        print(best_cost)
-        costhistory.append(best_cost)
+                currentGenNN = copy.deepcopy(NN)
+                adjust_modifiers(currentGenNN, best_cost*learning_rate)
 
-best_nn = neuralnetwork(NN)
+                if multiprocessing:
+                    NNlist = [copy.deepcopy(currentGenNN) for _ in range(processes)]
 
-print("code took: ", time.time() - total_time, "seconds to run")
-append_to_file(NN)
-plt.plot(costhistory)
-plt.ylabel('cost')
-plt.xlabel('generations')
-plt.ylim([0.0, 3])
-plt.show()
+                    with concurrent.futures.ProcessPoolExecutor() as executor: # multiprocessing
 
-while True:
-    try:
-        print(best_nn.calc(input("give the AI a prompt")))
-    except:
-        print("invalid inputs given")
+                        #results = [executor.submit(run_instance_of_sample, round(sample_size/processes)) for _ in range(processes)]
+                        map = [round(sample_size/processes) for x in range(processes)]
+                        results = executor.map(run_instance_of_sample, map, NNlist)
+                        for result in results:
+                            generationCost.append(result)
+
+                    generationCost = flatten(generationCost)
+
+                else:
+                    results = run_instance_of_sample(sample_size, currentGenNN)
+                    for result in results:
+                        generationCost.append(result)
+
+
+                averageCost = sum(generationCost)/len(generationCost)
+
+
+
+
+                if averageCost < best_cost or y == 0: # or y == 0 is optional although removing it makes the NN susceptable to local minimums
+                    BestNN = copy.deepcopy(currentGenNN)
+                    best_cost = averageCost
+
+
+            NN = copy.deepcopy(BestNN)
+            print(best_cost)
+            costhistory.append(best_cost)
+
+        times.append(time.time() - start_time)
+        start_time = time.time()
+        processes += 1
+
+    print(times)
+    best_nn = neuralnetwork(NN)
+
+
+    append_to_file(NN)
+    plt.plot(costhistory)
+    plt.ylabel('cost')
+    plt.xlabel('generations')
+    plt.ylim([0.0, 4])
+    plt.show()
+
+    while True:
+        try:
+            print(best_nn.calc(input("give the AI a prompt")))
+        except:
+            print("invalid inputs given")
 
 
